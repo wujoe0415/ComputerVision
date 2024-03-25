@@ -78,20 +78,21 @@ def read_light(filepath):
     return L
 
 def SVD(L, I):
-    KN = np.matmul(np.linalg.inv(np.matmul(np.transpose(L), L)), (np.matmul(np.transpose(L), I)))
-    return KN / np.linalg.norm(KN)
+    KN = (np.linalg.inv(np.transpose(L)@ L)) @ np.transpose(L) @ I
+    return KN #/ np.linalg.norm(KN)
 
 if __name__ == '__main__':
     tmp_pics = []
+    test = 1
     testcase = ['bunny', 'star', 'venus', 'noisy_venus']
     for i in range(1,7):
-        tmp_pics.append(read_bmp(f'./test/{testcase[0]}/pic{i}.bmp'))
+        tmp_pics.append(read_bmp(f'./test/{testcase[test]}/pic{i}.bmp'))
     pictures = np.zeros((6, image_row * image_col))
     for i in range(6):
         pictures[i,:] = tmp_pics[i].flatten()
-    light_sources = read_light(f'./test/{testcase[0]}/LightSource.txt')
-    print(light_sources)
+    light_sources = read_light(f'./test/{testcase[test]}/LightSource.txt')
     N = SVD(light_sources, pictures)
+    N = np.transpose(N)
     Z = np.zeros((image_row,image_col))
     # integral from 0,0
     for i in range(image_row):
@@ -99,13 +100,27 @@ if __name__ == '__main__':
             idx = i * image_col + j
             depth = 0
             for m in range(i):
-                if N[2][m*image_col+j] != 0:
-                    depth -= N[0][m*image_col+j]/N[2][m*image_col+j]
+                if N[m*image_col+j][2] != 0:
+                    depth -= N[m*image_col+j][0]/N[m*image_col+j][2]
             for n in range(j):
-                if N[2][i*image_col+n] != 0:
-                    depth -= N[1][i*image_col+n]/N[2][i*image_col+n]
+                if N[i*image_col+n][2] != 0:
+                    depth -= N[i*image_col+n][1]/N[i*image_col+n][2]
             Z[i,j] = depth
-    filepath = './test/bunny/depth.ply'
+
+    # integral from 120, 120
+    for i in range(image_row-1,-1,-1):
+        for j in range(image_col-1,-1,-1):
+            idx = i * image_col + j
+            depth = 0
+            for m in range(i,image_row):
+                if N[m*image_col+j][2] != 0:
+                    depth += N[m*image_col+j][0]/N[m*image_col+j][2]
+            for n in range(j,image_col):
+                if N[i*image_col+n][2] != 0:
+                    depth += N[i*image_col+n][1]/N[i*image_col+n][2]
+            Z[i,j] += depth
+            Z[i,j] /= 2
+    filepath = f'./test/{testcase[test]}/depth.ply'
     normal_visualization(N)
     depth_visualization(Z)
     save_ply(Z,filepath)
