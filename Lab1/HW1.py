@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import open3d as o3d
 import matplotlib.pyplot as plt
-
+import scipy.sparse as sp
 image_row = 120
 image_col = 120
 
@@ -77,9 +77,12 @@ def read_light(filepath):
         L[i] = L[i] / np.linalg.norm(L[i])
     return L
 
-def SVD(L, I):
+def pseudo_inverse(L, I):
     KN = (np.linalg.inv(np.transpose(L)@ L)) @ np.transpose(L) @ I
-    return KN #/ np.linalg.norm(KN)
+    return KN
+
+def lsqr(A, b):
+    return sp.linalg.lsqr(A, b)[0]
 
 if __name__ == '__main__':
     tmp_pics = []
@@ -91,37 +94,49 @@ if __name__ == '__main__':
     for i in range(6):
         pictures[i,:] = tmp_pics[i].flatten()
     light_sources = read_light(f'./test/{testcase[test]}/LightSource.txt')
-    N = SVD(light_sources, pictures)
+    N = pseudo_inverse(light_sources, pictures)
     N = np.transpose(N)
-    Z = np.zeros((image_row,image_col))
-    # integral from 0,0
+    mask = np.zeros((image_row * image_col))
     for i in range(image_row):
         for j in range(image_col):
             idx = i * image_col + j
-            depth = 0
-            for m in range(i):
-                if N[m*image_col+j][2] != 0:
-                    depth -= N[m*image_col+j][0]/N[m*image_col+j][2]
-            for n in range(j):
-                if N[i*image_col+n][2] != 0:
-                    depth -= N[i*image_col+n][1]/N[i*image_col+n][2]
-            Z[i,j] = depth
+            if np.linalg.norm(N[idx]) == 0:
+                N[idx] = [0,0,0]
+            else:
+                N[idx] = N[idx] / np.linalg.norm(N[idx])
+                mask[idx] = 1
+    size = image_row * image_col
 
-    # integral from 120, 120
-    for i in range(image_row-1,-1,-1):
-        for j in range(image_col-1,-1,-1):
+    M = sp.lil_matrix((2*size, size))
+    Z = np.zeros((size, 1))
+    V = np.zeros((2 * size, 1))
+    for i in range(image_row - 1):
+        for j in range(image_col - 1):
             idx = i * image_col + j
-            depth = 0
-            for m in range(i,image_row):
-                if N[m*image_col+j][2] != 0:
-                    depth += N[m*image_col+j][0]/N[m*image_col+j][2]
-            for n in range(j,image_col):
-                if N[i*image_col+n][2] != 0:
-                    depth += N[i*image_col+n][1]/N[i*image_col+n][2]
-            Z[i,j] += depth
-            Z[i,j] /= 2
+            if mask[idx] == 0 :
+                continue
+            M[idx*2, idx] = -1
+            M[idx*2, (i+1) * image_col + j] = 1
+            M[idx*2, i * image_col + j+1] = 1
+            V[2*idx] = -N[idx][0]/N[idx][2]
+            V[2*idx+1] = -N[idx][1]/N[idx][2]
+    Z = lsqr(M, V)
+    # integral from 0,0
+    # for i in range(image_row):
+    #     for j in range(image_col):
+    #         idx = i * image_col + j
+    #         depth = 0
+    #         for m in range(i):
+    #             if N[m*image_col+j][2] != 0:
+    #                 depth -= N[m*image_col+j][0]/N[m*image_col+j][2]
+    #         for n in range(j):
+    #             if N[i*image_col+n][2] != 0:
+    #                 depth -= N[i*image_col+n][1]/N[i*image_col+n][2]
+    #         Z[i,j] = depth
+    
     filepath = f'./test/{testcase[test]}/depth.ply'
     normal_visualization(N)
+    mask_visualization(mask)
     depth_visualization(Z)
     save_ply(Z,filepath)
     show_ply(filepath)
