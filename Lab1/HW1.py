@@ -83,7 +83,47 @@ def read_light(filepath):
 def pseudo_inverse(L, I):
     KN = (np.linalg.inv(np.transpose(L)@ L)) @ np.transpose(L) @ I
     return KN
+def Integral(N):
+    # for i in range(image_row):
+    #     for j in range(image_col):
+    #         depth = 0
+    #         for m in range(i):
+    #             depth -= N[m][0][0]/(N[m][0][2] + 1e-8)
+    #             depth -= N[m][j][0]/(N[m][j][2] + 1e-8)*2
+    #             depth -= N[m][image_col-1][0]/(N[m][image_col-1][2] + 1e-8)
+    #         for n in range(j):
+    #             depth -= N[0][n][1]/(N[0][n][2] + 1e-8)
+    #             depth -= N[i][n][1]/(N[i][n][2] + 1e-8)*2
+    #             depth -= N[image_row-1][n][1]/(N[image_row-1][n][2] + 1e-8)
+    #         for k in range(image_row-1, i, -1):
+    #             depth += N[k][0][0]/(N[k][0][2] + 1e-8)
+    #             depth += N[k][j][0]/(N[k][j][2] + 1e-8)*2
+    #             depth += N[k][image_col-1][0]/(N[k][image_col-1][2] + 1e-8)
+    #         for l in range(image_col-1, j, -1):
+    #             depth += N[0][l][1]/(N[0][l][2] + 1e-8)
+    #             depth += N[i][l][1]/(N[i][l][2] + 1e-8)*2
+    #             depth += N[image_row-1][l][1]/(N[image_row-1][l][2] + 1e-8)
+    #         Z[i][j] = depth/8
 
+    # Integral from 0, 0
+    dfdx, dfdy = 0, 0
+    for i in range(image_row):
+        dfdx -= N[i][0][0]/(N[i][0][2] + 1e-8)
+        for j in range(image_col):
+            dfdy += N[i][j][1]/(N[i][j][2] + 1e-8)
+            Z[i][j] += (dfdx + dfdy)
+    dfdx, dfdy = 0, 0
+    for j in range(image_col):
+        dfdy -= N[0][j][1]/(N[0][j][2] + 1e-8)
+        for i in range(image_row):
+            dfdx -= N[i][j][0]/(N[i][j][2] + 1e-8)
+            Z[i][j] += (dfdy + dfdx)
+
+
+    for i in range(image_row):
+        for j in range(image_col):
+            Z[i][j] /= 2
+    return Z
 def lsqr(A, b):
     return sp.linalg.lsqr(A, b)[0]
 
@@ -127,47 +167,9 @@ if __name__ == '__main__':
     # Z = lsqr(M, V)
     
     Z = np.zeros((image_row, image_col))
-    # integral from 0, 0
-    dfdx, dfdy = 0, 0
-    for i in range(image_row):
-        dfdx -= N[i][0][0]/(N[i][0][2] + 1e-8)
-        for j in range(image_col):
-            dfdy += N[i][j][1]/(N[i][j][2] + 1e-8)
-            Z[i][j] += (dfdx + dfdy)
-    
-    dfdx, dfdy = 0, 0
-    for j in range(image_col):
-        dfdy -= N[0][j][1]/(N[0][j][2] + 1e-8)
-        for i in range(image_row):
-            dfdx -= N[i][j][0]/(N[i][j][2] + 1e-8)
-            Z[i][j] += (dfdy + dfdx)
-    
-    for i in range(image_row):
-        for j in range(image_col):
-            Z[i][j] /= 2
-    
-    # for i in range(image_row):
-    #     for j in range(image_col):
-    #         depth = 0
-    #         for m in range(i):
-    #             depth -= N[m][0][0]/(N[m][0][2] + 1e-8)
-    #             depth -= N[m][j][0]/(N[m][j][2] + 1e-8)*2
-    #             depth -= N[m][image_col-1][0]/(N[m][image_col-1][2] + 1e-8)
-    #         for n in range(j):
-    #             depth -= N[0][n][1]/(N[0][n][2] + 1e-8)
-    #             depth -= N[i][n][1]/(N[i][n][2] + 1e-8)*2
-    #             depth -= N[image_row-1][n][1]/(N[image_row-1][n][2] + 1e-8)
-    #         for k in range(image_row-1, i, -1):
-    #             depth += N[k][0][0]/(N[k][0][2] + 1e-8)
-    #             depth += N[k][j][0]/(N[k][j][2] + 1e-8)*2
-    #             depth += N[k][image_col-1][0]/(N[k][image_col-1][2] + 1e-8)
-    #         for l in range(image_col-1, j, -1):
-    #             depth += N[0][l][1]/(N[0][l][2] + 1e-8)
-    #             depth += N[i][l][1]/(N[i][l][2] + 1e-8)*2
-    #             depth += N[image_row-1][l][1]/(N[image_row-1][l][2] + 1e-8)
-    #         Z[i][j] = depth/8
 
-    
+    Z = Integral(N)
+   
     filepath = f'./test/{testcase[test]}/depth.ply'
     normal_visualization(N)
     mask_visualization(mask)
