@@ -12,6 +12,7 @@ def mask_visualization(M):
     plt.figure()
     plt.imshow(mask, cmap='gray')
     plt.title('Mask')
+    plt.savefig("Mask")
 
 # visualizing the unit normal vector in RGB color space
 # N is the normal map which contains the "unit normal vector" of all pixels (size : "image width" * "image height" * 3)
@@ -23,6 +24,7 @@ def normal_visualization(N):
     plt.figure()
     plt.imshow(N_map)
     plt.title('Normal map')
+    plt.savefig("Normal")
 
 # visualizing the depth on 2D image
 # D is the depth map which contains "only the z value" of all pixels (size : "image width" * "image height")
@@ -35,6 +37,7 @@ def depth_visualization(D):
     plt.title('Depth map')
     plt.xlabel('X Pixel')
     plt.ylabel('Y Pixel')
+    plt.savefig("Depth")
 
 # convert depth map to point cloud and save it to ply file
 # Z is the depth map which contains "only the z value" of all pixels (size : "image width" * "image height")
@@ -96,50 +99,81 @@ if __name__ == '__main__':
     light_sources = read_light(f'./test/{testcase[test]}/LightSource.txt')
     N = pseudo_inverse(light_sources, pictures)
     N = np.transpose(N)
-    mask = np.zeros((image_row * image_col))
+    N = np.reshape(N, (image_row, image_col, 3))
+    mask = np.zeros((image_row, image_col))
     for i in range(image_row):
         for j in range(image_col):
-            idx = i * image_col + j
-            if np.linalg.norm(N[idx]) == 0:
-                N[idx] = [0,0,0]
+            if np.linalg.norm(N[i][j]) == 0:
+                N[i][j] = np.array([0,0,0])
             else:
-                N[idx] = N[idx] / np.linalg.norm(N[idx])
-                mask[idx] = 1
+                N[i][j] = N[i][j] / np.linalg.norm(N[i][j])
+                mask[i][j] = 1
     size = image_row * image_col
 
-    M = sp.lil_matrix((2*size, size))
-    Z = np.zeros((size, 1))
-    V = np.zeros((2 * size, 1))
-    for i in range(image_row - 1):
-        for j in range(image_col - 1):
-            idx = i * image_col + j
-            if mask[idx] == 0 :
-                continue
-            M[idx*2, idx] = -1
-            M[idx*2, (i+1) * image_col + j] = 1
-            M[idx*2, i * image_col + j+1] = 1
-            V[2*idx] = -N[idx][0]/N[idx][2]
-            V[2*idx+1] = -N[idx][1]/N[idx][2]
-    Z = lsqr(M, V)
-    # integral from 0,0
+    # M = sp.lil_matrix((2*size, size))
+    # Z = np.zeros((size, 1))
+    # V = np.zeros((2 * size, 1))
+    # for i in range(image_row - 1):
+    #     for j in range(image_col - 1):
+    #         idx = i * image_col + j
+    #         if mask[idx] == 0 :
+    #             continue
+    #         M[idx*2, idx] = -1
+    #         M[idx*2 + 1, idx] = -1
+    #         M[idx*2, (i+1) * image_col + j] = 1
+    #         M[idx*2+1, i * image_col + j+1] = 1
+    #         V[2*idx] = -N[idx][0]/N[idx][2]
+    #         V[2*idx+1] = -N[idx][1]/N[idx][2]
+    # Z = lsqr(M, V)
+    
+    Z = np.zeros((image_row, image_col))
+    # integral from 0, 0
+    dfdx, dfdy = 0, 0
+    for i in range(image_row):
+        dfdx -= N[i][0][0]/(N[i][0][2] + 1e-8)
+        for j in range(image_col):
+            dfdy += N[i][j][1]/(N[i][j][2] + 1e-8)
+            Z[i][j] += (dfdx + dfdy)
+    
+    dfdx, dfdy = 0, 0
+    for j in range(image_col):
+        dfdy -= N[0][j][1]/(N[0][j][2] + 1e-8)
+        for i in range(image_row):
+            dfdx -= N[i][j][0]/(N[i][j][2] + 1e-8)
+            Z[i][j] += (dfdy + dfdx)
+    
+    for i in range(image_row):
+        for j in range(image_col):
+            Z[i][j] /= 2
+    
     # for i in range(image_row):
     #     for j in range(image_col):
-    #         idx = i * image_col + j
     #         depth = 0
     #         for m in range(i):
-    #             if N[m*image_col+j][2] != 0:
-    #                 depth -= N[m*image_col+j][0]/N[m*image_col+j][2]
+    #             depth -= N[m][0][0]/(N[m][0][2] + 1e-8)
+    #             depth -= N[m][j][0]/(N[m][j][2] + 1e-8)*2
+    #             depth -= N[m][image_col-1][0]/(N[m][image_col-1][2] + 1e-8)
     #         for n in range(j):
-    #             if N[i*image_col+n][2] != 0:
-    #                 depth -= N[i*image_col+n][1]/N[i*image_col+n][2]
-    #         Z[i,j] = depth
+    #             depth -= N[0][n][1]/(N[0][n][2] + 1e-8)
+    #             depth -= N[i][n][1]/(N[i][n][2] + 1e-8)*2
+    #             depth -= N[image_row-1][n][1]/(N[image_row-1][n][2] + 1e-8)
+    #         for k in range(image_row-1, i, -1):
+    #             depth += N[k][0][0]/(N[k][0][2] + 1e-8)
+    #             depth += N[k][j][0]/(N[k][j][2] + 1e-8)*2
+    #             depth += N[k][image_col-1][0]/(N[k][image_col-1][2] + 1e-8)
+    #         for l in range(image_col-1, j, -1):
+    #             depth += N[0][l][1]/(N[0][l][2] + 1e-8)
+    #             depth += N[i][l][1]/(N[i][l][2] + 1e-8)*2
+    #             depth += N[image_row-1][l][1]/(N[image_row-1][l][2] + 1e-8)
+    #         Z[i][j] = depth/8
+
     
     filepath = f'./test/{testcase[test]}/depth.ply'
     normal_visualization(N)
     mask_visualization(mask)
-    depth_visualization(Z)
-    save_ply(Z,filepath)
+    depth_visualization(Z*mask)
+    save_ply(Z*mask,filepath)
     show_ply(filepath)
 
     # showing the windows of all visualization function
-    plt.show()
+    #plt.show()
