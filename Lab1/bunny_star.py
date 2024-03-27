@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import open3d as o3d
+import sys
 import matplotlib.pyplot as plt
 import scipy.sparse as sp
 image_row = 120
@@ -100,66 +101,90 @@ def Integral(N):
             dfdx -= N[i][j][0]/(N[i][j][2] + 1e-8) * (image_row - i) / image_row 
             Z[i][j] += (dfdy + dfdx)
 
-    # # Integral from 0, image_col-1
-    # dfdx, dfdy = 0, 0
-    # for i in range(image_row):
-    #     dfdx -= N[i][image_col-1][0]/(N[i][image_col-1][2] + 1e-8) * (image_row - i) / image_row 
-    #     for j in range(image_col-1, -1, -1):
-    #         dfdy += N[i][j][1]/(N[i][j][2] + 1e-8) * j  / image_col
-    #         Z[i][j] += (dfdx + dfdy)
-    # dfdx, dfdy = 0, 0
-    # for j in range(image_col-1, -1, -1):
-    #     dfdy -= N[0][j][1]/(N[0][j][2] + 1e-8) *j / image_col
-    #     for i in range(image_row):
-    #         dfdx += N[i][j][0]/(N[i][j][2] + 1e-8) * (image_row - i) / image_row 
-    #         Z[i][j] += (dfdy + dfdx)
+    # Integral from 0, image_col-1
+    dfdx, dfdy = 0, 0
+    for i in range(image_row):
+        dfdx -= N[i][image_col-1][0]/(N[i][image_col-1][2] + 1e-8) * (image_row - i) / image_row 
+        for j in range(image_col-1, -1, -1):
+            dfdy += N[i][j][1]/(N[i][j][2] + 1e-8) * j  / image_col
+            Z[i][j] += (dfdx + dfdy)
+    dfdx, dfdy = 0, 0
+    for j in range(image_col-1, -1, -1):
+        dfdy -= N[0][j][1]/(N[0][j][2] + 1e-8) *j / image_col
+        for i in range(image_row):
+            dfdx += N[i][j][0]/(N[i][j][2] + 1e-8) * (image_row - i) / image_row 
+            Z[i][j] += (dfdy + dfdx)
 
-    # # Integral from image_row-1, 0
-    # dfdx, dfdy = 0, 0
-    # for i in range(image_row-1, -1, -1):
-    #     dfdx += N[i][0][0]/(N[i][0][2] + 1e-8) * i / image_row
-    #     for j in range(image_col):
-    #         dfdy -= N[i][j][1]/(N[i][j][2] + 1e-8) * (image_col - j) / image_col
-    #         Z[i][j] += (dfdx + dfdy)
-    # dfdx, dfdy = 0, 0
-    # for j in range(image_col):
-    #     dfdy += N[image_row-1][j][1]/(N[image_row-1][j][2] + 1e-8) * (image_col - j) / image_col
-    #     for i in range(image_row-1, -1, -1):
-    #         dfdx -= N[i][j][0]/(N[i][j][2] + 1e-8) * i / image_row 
-    #         Z[i][j] += (dfdy + dfdx)
+    # Integral from image_row-1, 0
+    dfdx, dfdy = 0, 0
+    for i in range(image_row-1, -1, -1):
+        dfdx += N[i][0][0]/(N[i][0][2] + 1e-8) * i / image_row
+        for j in range(image_col):
+            dfdy -= N[i][j][1]/(N[i][j][2] + 1e-8) * (image_col - j) / image_col
+            Z[i][j] += (dfdx + dfdy)
+    dfdx, dfdy = 0, 0
+    for j in range(image_col):
+        dfdy += N[image_row-1][j][1]/(N[image_row-1][j][2] + 1e-8) * (image_col - j) / image_col
+        for i in range(image_row-1, -1, -1):
+            dfdx -= N[i][j][0]/(N[i][j][2] + 1e-8) * i / image_row 
+            Z[i][j] += (dfdy + dfdx)
 
-    # #Integral from image_row-1, image_col-1
-    # dfdx, dfdy = 0, 0
-    # for i in range(image_row-1, -1, -1):
-    #     dfdx += N[i][image_col-1][0]/(N[i][image_col-1][2] + 1e-8) * i / image_row 
-    #     for j in range(image_col-1, -1, -1):
-    #         dfdy += N[i][j][1]/(N[i][j][2] + 1e-8) * j / image_col
-    #         Z[i][j] += (dfdx + dfdy)
-    # dfdx, dfdy = 0, 0
-    # for j in range(image_col-1, -1, -1):
-    #     dfdy += N[image_row-1][j][1]/(N[image_row-1][j][2] + 1e-8)* j / image_col
-    #     for i in range(image_row-1, -1, -1):
-    #         dfdx += N[i][j][0]/(N[i][j][2] + 1e-8) * i / image_row 
-    #         Z[i][j] += (dfdy + dfdx)
+    #Integral from image_row-1, image_col-1
+    dfdx, dfdy = 0, 0
+    for i in range(image_row-1, -1, -1):
+        dfdx += N[i][image_col-1][0]/(N[i][image_col-1][2] + 1e-8) * i / image_row 
+        for j in range(image_col-1, -1, -1):
+            dfdy += N[i][j][1]/(N[i][j][2] + 1e-8) * j / image_col
+            Z[i][j] += (dfdx + dfdy)
+    dfdx, dfdy = 0, 0
+    for j in range(image_col-1, -1, -1):
+        dfdy += N[image_row-1][j][1]/(N[image_row-1][j][2] + 1e-8)* j / image_col
+        for i in range(image_row-1, -1, -1):
+            dfdx += N[i][j][0]/(N[i][j][2] + 1e-8) * i / image_row 
+            Z[i][j] += (dfdy + dfdx)
 
     
     for i in range(image_row):
         for j in range(image_col):
             Z[i][j] /= (80) 
     return Z
+def reconstructNormal(Z):
+    M = sp.lil_matrix((2*size, size))
+    Z = np.zeros((size, 1))
+    V = np.zeros((2 * size, 1))
+    for i in range(image_row - 1):
+        for j in range(image_col - 1):
+            idx = i * image_col + j
+            if mask[i,j] == 0:
+                continue
+            M[idx*2, idx] = -1
+            M[idx*2 + 1, idx] = -1
+            M[idx*2, (i+1) * image_col + j] = 1
+            M[idx*2+1, i * image_col + j+1] = 1
+            V[2*idx] = -N[i][j][0]/N[i][j][2]
+            V[2*idx+1] = -N[i][j][1]/N[i][j][2]
+    Z = lsqr(M, V)
+    return Z
+
 def lsqr(A, b):
-    return sp.linalg.lsqr(A.T@A, A.T@b)[0]
+    return sp.linalg.lsqr(A, b)[0]
 
 if __name__ == '__main__':
+    if len(sys.argv) != 2:
+        print("Please provide two parameters: bunny or star")
+        sys.exit(1)
+    parameter = sys.argv[1]
+    if not parameter == 'bunny' and not parameter == 'star' and not parameter == 'venus':
+        print("Invalid parameter")
+        sys.exit(1)
+    
     tmp_pics = []
-    test = 0
-    testcase = ['bunny', 'star', 'venus', 'noisy_venus']
     for i in range(1,7):
-        tmp_pics.append(read_bmp(f'./test/{testcase[test]}/pic{i}.bmp'))
+        tmp_pics.append(read_bmp(f'./test/{parameter}/pic{i}.bmp'))
     pictures = np.zeros((6, image_row * image_col))
     for i in range(6):
         pictures[i,:] = tmp_pics[i].flatten()
-    light_sources = read_light(f'./test/{testcase[test]}/LightSource.txt')
+    light_sources = read_light(f'./test/{parameter}/LightSource.txt')
     N = pseudo_inverse(light_sources, pictures)
     N = np.transpose(N)
     N = np.reshape(N, (image_row, image_col, 3))
@@ -172,24 +197,9 @@ if __name__ == '__main__':
                 N[i][j] = N[i][j] / np.linalg.norm(N[i][j])
                 mask[i][j] = 1
     size = image_row * image_col
-
-    M = sp.lil_matrix((2*size, size))
     Z = np.zeros((size, 1))
-    # V = np.zeros((2 * size, 1))
-    # for i in range(image_row - 1):
-    #     for j in range(image_col - 1):
-    #         idx = i * image_col + j
-    #         if mask[i,j] == 0:
-    #             continue
-    #         M[idx*2, idx] = -1
-    #         M[idx*2 + 1, idx] = -1
-    #         M[idx*2, (i+1) * image_col + j] = 1
-    #         M[idx*2+1, i * image_col + j+1] = 1
-    #         V[2*idx] = -N[i][j][0]/N[i][j][2]
-    #         V[2*idx+1] = -N[i][j][1]/N[i][j][2]
-    # Z = lsqr(M, V)
+    #Z = reconstructNormal(N)
     Z.resize((image_row, image_col))
-
     Z = Integral(N)
     
     # normalize Z
@@ -203,7 +213,7 @@ if __name__ == '__main__':
     kernel = np.ones((5,5),np.float32)/25
     Z = cv2.filter2D(Z*mask, -1, kernel)
    
-    filepath = f'./test/{testcase[test]}/depth.ply'
+    filepath = f'./test/{parameter}/depth.ply'
     normal_visualization(N)
     mask_visualization(mask)
     depth_visualization(Z*mask)

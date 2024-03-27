@@ -96,7 +96,12 @@ def enhance_depth(N, Z):
     return enhanced_Z
 
 # Remove Gaussian Noise
+# Reference: https://stackoverflow.com/questions/62042172/how-to-remove-noise-in-image-opencv-python
 def remove_noise(image):
+    # 1. Morphological Transformations
+    # 2. Divide the original image by the morphological transformed image
+    # 3. Threshold the divided image
+    # 4. Median Blur the thresholded image
     se=cv2.getStructuringElement(cv2.MORPH_RECT , (8,8))
     bg=cv2.morphologyEx(image, cv2.MORPH_DILATE, se)
     out_gray=cv2.divide(image, bg, scale=255)
@@ -105,7 +110,6 @@ def remove_noise(image):
 
     return image*(np.float32(tempmask)/255)
 
-
 if __name__ == '__main__':
     if len(sys.argv) < 2:
         print("Please provide the parameter (venus or noisy_venus)")
@@ -113,11 +117,7 @@ if __name__ == '__main__':
     
     parameter = sys.argv[1]
     
-    if parameter == 'venus':
-        test = 2
-    elif parameter == 'noisy_venus':
-        test = 3
-    else:
+    if not parameter == 'bunny' and not parameter == 'star' and not parameter == 'venus' and not parameter == 'noisy_venus':
         print("Invalid parameter")
         sys.exit(1)
     
@@ -129,6 +129,7 @@ if __name__ == '__main__':
         if parameter == 'noisy_venus':
             tmp_pics[i] = remove_noise(tmp_pics[i])
         pictures[i,:] = cv2.medianBlur(np.float32(tmp_pics[i]), 5).flatten()
+        #cv2.imwrite(f'./test/{parameter}/pic{i}_filtered.bmp', pictures[i].reshape(image_row, image_col))
 
     light_sources = read_light(f'./test/{parameter}/LightSource.txt')
 
@@ -145,12 +146,8 @@ if __name__ == '__main__':
             else:
                 N[i][j] = N[i][j] / np.linalg.norm(N[i][j])
                 mask[i][j] = 1
-    size = image_row * image_col
-
-    M = sp.lil_matrix((2*size, size))
-    Z = np.zeros((size, 1))
-    Z.resize((image_row, image_col))
-
+    Z = np.zeros((image_row, image_col))
+    
     Z = enhance_depth(N, Z)
     
     # standardize Z
@@ -170,4 +167,4 @@ if __name__ == '__main__':
     show_ply(filepath)
 
     # showing the windows of all visualization function
-    #plt.show()
+    plt.show()
