@@ -84,6 +84,7 @@ def pseudo_inverse(L, I):
     KN = (np.linalg.inv(np.transpose(L)@ L)) @ np.transpose(L) @ I
     return KN
 
+# Enhance the depth map by adding the dot product of normal vector and light source
 def enhance_depth(N, Z):
     image_row, image_col, _ = N.shape
     enhanced_Z = np.copy(Z)
@@ -93,20 +94,33 @@ def enhance_depth(N, Z):
                 enhanced_Z[i][j] += np.dot(N[i][j], np.array([0, 0, 1])) / np.linalg.norm(N[i][j])
     return enhanced_Z
 
+# Remove Gaussian Noise
+def remove_noise(image):
+    se=cv2.getStructuringElement(cv2.MORPH_RECT , (8,8))
+    bg=cv2.morphologyEx(image, cv2.MORPH_DILATE, se)
+    out_gray=cv2.divide(image, bg, scale=255)
+    out_binary=cv2.threshold(out_gray, 0, 255, cv2.THRESH_OTSU )[1] 
+    tempmask = cv2.medianBlur(np.float32(out_binary), 5)
+
+    return image*(np.float32(tempmask)/255)
+
 if __name__ == '__main__':
     tmp_pics = []
-    test = 2
+    test = 3
     testcase = ['bunny', 'star', 'venus', 'noisy_venus']
     for i in range(1,7):
         tmp_pics.append(read_bmp(f'./test/{testcase[test]}/pic{i}.bmp'))
     pictures = np.zeros((6, image_row * image_col))
     for i in range(6):
-        pictures[i,:] = tmp_pics[i].flatten()
+        if test == 3:
+            tmp_pics[i] = remove_noise(tmp_pics[i])
+        pictures[i,:] = cv2.medianBlur(np.float32(tmp_pics[i]), 5).flatten()
+
     light_sources = read_light(f'./test/{testcase[test]}/LightSource.txt')
+
     N = pseudo_inverse(light_sources, pictures)
     N = np.transpose(N)
     N = np.reshape(N, (image_row, image_col, 3))
-
     N = cv2.medianBlur(np.float32(N), 5)
     
     mask = np.zeros((image_row, image_col))
@@ -123,11 +137,7 @@ if __name__ == '__main__':
     Z = np.zeros((size, 1))
     Z.resize((image_row, image_col))
 
-    
-
     Z = enhance_depth(N, Z)
-    #Z = average_integral(N, Z)
-    #Z = Integral(N)
     
     # standardize Z
     Zmean = np.mean(Z)
