@@ -83,53 +83,76 @@ def read_light(filepath):
 def pseudo_inverse(L, I):
     KN = (np.linalg.inv(np.transpose(L)@ L)) @ np.transpose(L) @ I
     return KN
-def Integral(N):
-    # for i in range(image_row):
-    #     for j in range(image_col):
-    #         depth = 0
-    #         for m in range(i):
-    #             depth -= N[m][0][0]/(N[m][0][2] + 1e-8)
-    #             depth -= N[m][j][0]/(N[m][j][2] + 1e-8)*2
-    #             depth -= N[m][image_col-1][0]/(N[m][image_col-1][2] + 1e-8)
-    #         for n in range(j):
-    #             depth -= N[0][n][1]/(N[0][n][2] + 1e-8)
-    #             depth -= N[i][n][1]/(N[i][n][2] + 1e-8)*2
-    #             depth -= N[image_row-1][n][1]/(N[image_row-1][n][2] + 1e-8)
-    #         for k in range(image_row-1, i, -1):
-    #             depth += N[k][0][0]/(N[k][0][2] + 1e-8)
-    #             depth += N[k][j][0]/(N[k][j][2] + 1e-8)*2
-    #             depth += N[k][image_col-1][0]/(N[k][image_col-1][2] + 1e-8)
-    #         for l in range(image_col-1, j, -1):
-    #             depth += N[0][l][1]/(N[0][l][2] + 1e-8)
-    #             depth += N[i][l][1]/(N[i][l][2] + 1e-8)*2
-    #             depth += N[image_row-1][l][1]/(N[image_row-1][l][2] + 1e-8)
-    #         Z[i][j] = depth/8
 
+def Integral(N):
+    
     # Integral from 0, 0
     dfdx, dfdy = 0, 0
     for i in range(image_row):
-        dfdx -= N[i][0][0]/(N[i][0][2] + 1e-8)
+        dfdx += N[i][0][0]/(N[i][0][2] + 1e-8) * (image_row - i) / image_row 
         for j in range(image_col):
-            dfdy += N[i][j][1]/(N[i][j][2] + 1e-8)
-            Z[i][j] += (dfdx + dfdy)
+            dfdy -= N[i][j][1]/(N[i][j][2] + 1e-8) * (image_col - j) / image_col
+            Z[i][j] -= (dfdx + dfdy)
     dfdx, dfdy = 0, 0
     for j in range(image_col):
-        dfdy -= N[0][j][1]/(N[0][j][2] + 1e-8)
+        dfdy -= N[0][j][1]/(N[0][j][2] + 1e-8) * (image_col - j) / image_col
         for i in range(image_row):
-            dfdx -= N[i][j][0]/(N[i][j][2] + 1e-8)
+            dfdx -= N[i][j][0]/(N[i][j][2] + 1e-8) * (image_row - i) / image_row 
             Z[i][j] += (dfdy + dfdx)
 
+    # # Integral from 0, image_col-1
+    # dfdx, dfdy = 0, 0
+    # for i in range(image_row):
+    #     dfdx -= N[i][image_col-1][0]/(N[i][image_col-1][2] + 1e-8) * (image_row - i) / image_row 
+    #     for j in range(image_col-1, -1, -1):
+    #         dfdy += N[i][j][1]/(N[i][j][2] + 1e-8) * j  / image_col
+    #         Z[i][j] += (dfdx + dfdy)
+    # dfdx, dfdy = 0, 0
+    # for j in range(image_col-1, -1, -1):
+    #     dfdy -= N[0][j][1]/(N[0][j][2] + 1e-8) *j / image_col
+    #     for i in range(image_row):
+    #         dfdx += N[i][j][0]/(N[i][j][2] + 1e-8) * (image_row - i) / image_row 
+    #         Z[i][j] += (dfdy + dfdx)
 
+    # # Integral from image_row-1, 0
+    # dfdx, dfdy = 0, 0
+    # for i in range(image_row-1, -1, -1):
+    #     dfdx += N[i][0][0]/(N[i][0][2] + 1e-8) * i / image_row
+    #     for j in range(image_col):
+    #         dfdy -= N[i][j][1]/(N[i][j][2] + 1e-8) * (image_col - j) / image_col
+    #         Z[i][j] += (dfdx + dfdy)
+    # dfdx, dfdy = 0, 0
+    # for j in range(image_col):
+    #     dfdy += N[image_row-1][j][1]/(N[image_row-1][j][2] + 1e-8) * (image_col - j) / image_col
+    #     for i in range(image_row-1, -1, -1):
+    #         dfdx -= N[i][j][0]/(N[i][j][2] + 1e-8) * i / image_row 
+    #         Z[i][j] += (dfdy + dfdx)
+
+    # #Integral from image_row-1, image_col-1
+    # dfdx, dfdy = 0, 0
+    # for i in range(image_row-1, -1, -1):
+    #     dfdx += N[i][image_col-1][0]/(N[i][image_col-1][2] + 1e-8) * i / image_row 
+    #     for j in range(image_col-1, -1, -1):
+    #         dfdy += N[i][j][1]/(N[i][j][2] + 1e-8) * j / image_col
+    #         Z[i][j] += (dfdx + dfdy)
+    # dfdx, dfdy = 0, 0
+    # for j in range(image_col-1, -1, -1):
+    #     dfdy += N[image_row-1][j][1]/(N[image_row-1][j][2] + 1e-8)* j / image_col
+    #     for i in range(image_row-1, -1, -1):
+    #         dfdx += N[i][j][0]/(N[i][j][2] + 1e-8) * i / image_row 
+    #         Z[i][j] += (dfdy + dfdx)
+
+    
     for i in range(image_row):
         for j in range(image_col):
-            Z[i][j] /= 2
+            Z[i][j] /= (80) 
     return Z
 def lsqr(A, b):
-    return sp.linalg.lsqr(A, b)[0]
+    return sp.linalg.lsqr(A.T@A, A.T@b)[0]
 
 if __name__ == '__main__':
     tmp_pics = []
-    test = 1
+    test = 0
     testcase = ['bunny', 'star', 'venus', 'noisy_venus']
     for i in range(1,7):
         tmp_pics.append(read_bmp(f'./test/{testcase[test]}/pic{i}.bmp'))
@@ -150,25 +173,35 @@ if __name__ == '__main__':
                 mask[i][j] = 1
     size = image_row * image_col
 
-    # M = sp.lil_matrix((2*size, size))
-    # Z = np.zeros((size, 1))
+    M = sp.lil_matrix((2*size, size))
+    Z = np.zeros((size, 1))
     # V = np.zeros((2 * size, 1))
     # for i in range(image_row - 1):
     #     for j in range(image_col - 1):
     #         idx = i * image_col + j
-    #         if mask[idx] == 0 :
+    #         if mask[i,j] == 0:
     #             continue
     #         M[idx*2, idx] = -1
     #         M[idx*2 + 1, idx] = -1
     #         M[idx*2, (i+1) * image_col + j] = 1
     #         M[idx*2+1, i * image_col + j+1] = 1
-    #         V[2*idx] = -N[idx][0]/N[idx][2]
-    #         V[2*idx+1] = -N[idx][1]/N[idx][2]
+    #         V[2*idx] = -N[i][j][0]/N[i][j][2]
+    #         V[2*idx+1] = -N[i][j][1]/N[i][j][2]
     # Z = lsqr(M, V)
-    
-    Z = np.zeros((image_row, image_col))
+    Z.resize((image_row, image_col))
 
     Z = Integral(N)
+    
+    # normalize Z
+    Zmin = np.min(Z)
+    Zmax = np.max(Z)
+    for i in range(image_row):
+        for j in range(image_col):
+            Z[i][j] = (Z[i][j] - Zmin) / (Zmax - Zmin) * 20
+
+    # post processing
+    kernel = np.ones((5,5),np.float32)/25
+    Z = cv2.filter2D(Z*mask, -1, kernel)
    
     filepath = f'./test/{testcase[test]}/depth.ply'
     normal_visualization(N)
@@ -178,4 +211,4 @@ if __name__ == '__main__':
     show_ply(filepath)
 
     # showing the windows of all visualization function
-    #plt.show()
+    plt.show()
