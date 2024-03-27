@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import open3d as o3d
+import sys
 import matplotlib.pyplot as plt
 import scipy.sparse as sp
 image_row = 120
@@ -104,19 +105,32 @@ def remove_noise(image):
 
     return image*(np.float32(tempmask)/255)
 
+
 if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        print("Please provide the parameter (venus or noisy_venus)")
+        sys.exit(1)
+    
+    parameter = sys.argv[1]
+    
+    if parameter == 'venus':
+        test = 2
+    elif parameter == 'noisy_venus':
+        test = 3
+    else:
+        print("Invalid parameter")
+        sys.exit(1)
+    
     tmp_pics = []
-    test = 3
-    testcase = ['bunny', 'star', 'venus', 'noisy_venus']
     for i in range(1,7):
-        tmp_pics.append(read_bmp(f'./test/{testcase[test]}/pic{i}.bmp'))
+        tmp_pics.append(read_bmp(f'./test/{parameter}/pic{i}.bmp'))
     pictures = np.zeros((6, image_row * image_col))
     for i in range(6):
-        if test == 3:
+        if parameter == 'noisy_venus':
             tmp_pics[i] = remove_noise(tmp_pics[i])
         pictures[i,:] = cv2.medianBlur(np.float32(tmp_pics[i]), 5).flatten()
 
-    light_sources = read_light(f'./test/{testcase[test]}/LightSource.txt')
+    light_sources = read_light(f'./test/{parameter}/LightSource.txt')
 
     N = pseudo_inverse(light_sources, pictures)
     N = np.transpose(N)
@@ -148,7 +162,7 @@ if __name__ == '__main__':
     kernel = np.ones((5,5),np.float32)/25
     Z = cv2.filter2D(Z*mask, -1, kernel)
    
-    filepath = f'./test/{testcase[test]}/depth.ply'
+    filepath = f'./test/{parameter}/depth.ply'
     normal_visualization(N)
     mask_visualization(mask)
     depth_visualization(Z*mask)
